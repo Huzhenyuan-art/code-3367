@@ -62,6 +62,60 @@
               </el-table-column>
             </el-table>
           </el-card>
+
+          <el-card class="favorite-card">
+            <template #header>
+              <div class="card-header">
+                <span>我的收藏</span>
+              </div>
+            </template>
+
+            <el-table :data="favorites" stripe style="width: 100%" v-loading="favoritesLoading">
+              <el-table-column prop="dishName" label="菜名" width="140" />
+              <el-table-column prop="price" label="价格" width="100">
+                <template #default="{ row }">¥{{ row.price }}</template>
+              </el-table-column>
+              <el-table-column prop="description" label="简介" show-overflow-tooltip />
+              <el-table-column label="状态" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === 'ON_SHELF' ? 'success' : 'info'">
+                    {{ row.status === 'ON_SHELF' ? '在售' : '已下架' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="收藏时间" width="170">
+                <template #default="{ row }">
+                  {{ formatDateTime(row.createdAt) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="180">
+                <template #default="{ row }">
+                  <el-button
+                    size="small"
+                    type="primary"
+                    :disabled="row.status !== 'ON_SHELF'"
+                    @click="addToCart(row)"
+                  >加入购物车</el-button>
+                  <el-button size="small" type="danger" @click="removeFavorite(row.dishId)">取消收藏</el-button>
+                </template>
+              </el-table-column>
+              <template #empty>
+                <el-empty description="暂无收藏" />
+              </template>
+            </el-table>
+
+            <div class="pagination-wrapper" v-if="favoriteTotal > 0">
+              <el-pagination
+                v-model:current-page="favoritePage"
+                v-model:page-size="favoriteSize"
+                :total="favoriteTotal"
+                :page-sizes="[5, 10, 20]"
+                layout="total, sizes, prev, pager, next"
+                @current-change="loadFavorites"
+                @size-change="handleFavoriteSizeChange"
+              />
+            </div>
+          </el-card>
         </el-col>
       </el-row>
     </el-main>
@@ -106,7 +160,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useUserStore } from '../store/user'
-import { userApi, orderApi } from '../api'
+import { userApi, orderApi, favoriteApi } from '../api'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
@@ -117,6 +171,11 @@ const rechargeLoading = ref(false)
 const rechargeFormRef = ref(null)
 const detailVisible = ref(false)
 const orderItems = ref([])
+const favorites = ref([])
+const favoritesLoading = ref(false)
+const favoritePage = ref(1)
+const favoriteSize = ref(5)
+const favoriteTotal = ref(0)
 
 const rechargeForm = reactive({
   amount: 100
@@ -197,9 +256,68 @@ const showOrderDetail = async (orderId) => {
   }
 }
 
+const loadFavorites = async () => {
+  favoritesLoading.value = true
+  try {
+    const res = await favoriteApi.getMyFavorites(favoritePage.value, favoriteSize.value)
+    favorites.value = res.data.list
+    favoriteTotal.value = res.data.total
+
+    // 当前页被删空且不是第一页时，回退一页
+    if (favorites.value.length === 0 && favoritePage.value > 1) {
+      favoritePage.value -= 1
+      await loadFavorites()
+    }
+  } catch (error) {
+    ElMessage.error('加载收藏失败')
+  } finally {
+    favoritesLoading.value = false
+  }
+}
+
+const handleFavoriteSizeChange = () => {
+  favoritePage.value = 1
+  loadFavorites()
+}
+
+const removeFavorite = async (dishId) => {
+  try {
+    await favoriteApi.remove(dishId)
+    ElMessage.success('已取消收藏')
+    loadFavorites()
+  } catch (error) {
+    ElMessage.error(error.message || '操作失败')
+  }
+}
+
+const addToCart = (dish) => {
+  if (dish.status !== 'ON_SHELF') {
+    ElMessage.warning('该菜品已下架，无法加入购物车')
+    return
+  }
+
+  const cart = JSON.parse(localStorage.getItem('cart') || '[]')
+  const existingItem = cart.find(item => item.dishId === dish.dishId)
+
+  if (existingItem) {
+    existingItem.quantity += 1
+  } else {
+    cart.push({
+      dishId: dish.dishId,
+      dishName: dish.dishName,
+      price: dish.price,
+      quantity: 1
+    })
+  }
+
+  localStorage.setItem('cart', JSON.stringify(cart))
+  ElMessage.success('已加入购物车')
+}
+
 onMounted(() => {
   loadUserInfo()
   loadOrders()
+  loadFavorites()
 })
 </script>
 
@@ -237,6 +355,17 @@ onMounted(() => {
 
 .info-card, .order-card {
   border-radius: 12px;
+}
+
+.favorite-card {
+  border-radius: 12px;
+  margin-top: 20px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .card-header {

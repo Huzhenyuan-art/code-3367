@@ -46,6 +46,9 @@ public class OrderService {
             if (dish == null) {
                 throw new RuntimeException("菜品不存在: " + itemReq.getDishId());
             }
+            if (!DishService.STATUS_ON_SHELF.equals(dish.getStatus())) {
+                throw new RuntimeException("菜品已下架: " + dish.getDishName());
+            }
 
             BigDecimal itemTotal = dish.getPrice().multiply(new BigDecimal(itemReq.getQuantity()));
             totalPrice = totalPrice.add(itemTotal);

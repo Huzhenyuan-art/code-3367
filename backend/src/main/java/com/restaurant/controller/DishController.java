@@ -4,10 +4,12 @@ import com.restaurant.dto.DishRequest;
 import com.restaurant.dto.Result;
 import com.restaurant.entity.Dish;
 import com.restaurant.service.DishService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/dishes")
@@ -20,6 +22,16 @@ public class DishController {
     }
 
     @GetMapping("/list")
+    public Result<List<Dish>> getOnShelfDishes() {
+        try {
+            List<Dish> dishes = dishService.getOnShelfDishes();
+            return Result.success(dishes);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/all")
     public Result<List<Dish>> getAllDishes() {
         try {
             List<Dish> dishes = dishService.getAllDishes();
@@ -64,6 +76,22 @@ public class DishController {
 
             Dish updatedDish = dishService.updateDish(id, dish);
             return Result.success(updatedDish);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/status")
+    public Result<Dish> updateDishStatus(@PathVariable Long id, @RequestBody Map<String, String> params,
+                                         HttpServletRequest request) {
+        try {
+            String role = (String) request.getAttribute("role");
+            if (!"ADMIN".equals(role)) {
+                return Result.error(403, "无权限");
+            }
+
+            Dish dish = dishService.updateDishStatus(id, params.get("status"));
+            return Result.success(dish);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

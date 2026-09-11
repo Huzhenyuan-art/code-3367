@@ -40,6 +40,13 @@
               <p class="dish-desc">{{ dish.description }}</p>
             </div>
             <div class="dish-actions" v-if="userStore.isLoggedIn() && !userStore.isAdmin()">
+              <el-button
+                class="fav-btn"
+                :type="favoriteIds.has(dish.id) ? 'warning' : 'default'"
+                :icon="favoriteIds.has(dish.id) ? StarFilled : Star"
+                circle
+                @click="toggleFavorite(dish)"
+              />
               <el-input-number v-model="quantities[dish.id]" :min="1" :max="99" size="small" />
               <el-button type="primary" size="small" @click="addToCart(dish)">加入购物车</el-button>
             </div>
@@ -54,15 +61,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
-import { dishApi } from '../api'
+import { dishApi, favoriteApi } from '../api'
 import { ElMessage } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, Star, StarFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const dishes = ref([])
 const quantities = reactive({})
+const favoriteIds = ref(new Set())
 const cart = ref(JSON.parse(localStorage.getItem('cart') || '[]'))
 const cartCount = ref(cart.value.reduce((sum, item) => sum + item.quantity, 0))
 
@@ -75,6 +83,33 @@ const loadDishes = async () => {
     })
   } catch (error) {
     ElMessage.error('加载菜品失败')
+  }
+}
+
+const loadFavorites = async () => {
+  if (!userStore.isLoggedIn() || userStore.isAdmin()) return
+  try {
+    const res = await favoriteApi.getIds()
+    favoriteIds.value = new Set(res.data)
+  } catch (error) {
+    ElMessage.error('加载收藏失败')
+  }
+}
+
+const toggleFavorite = async (dish) => {
+  try {
+    if (favoriteIds.value.has(dish.id)) {
+      await favoriteApi.remove(dish.id)
+      favoriteIds.value.delete(dish.id)
+      ElMessage.success('已取消收藏')
+    } else {
+      await favoriteApi.add(dish.id)
+      favoriteIds.value.add(dish.id)
+      ElMessage.success('收藏成功')
+    }
+    favoriteIds.value = new Set(favoriteIds.value)
+  } catch (error) {
+    ElMessage.error(error.message || '操作失败')
   }
 }
 
@@ -115,6 +150,7 @@ const handleCommand = (command) => {
 
 onMounted(() => {
   loadDishes()
+  loadFavorites()
 })
 </script>
 
@@ -208,5 +244,9 @@ onMounted(() => {
   align-items: center;
   padding-top: 12px;
   border-top: 1px solid #eee;
+}
+
+.fav-btn {
+  flex-shrink: 0;
 }
 </style>

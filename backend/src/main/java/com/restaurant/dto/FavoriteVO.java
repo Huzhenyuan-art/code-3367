@@ -1,19 +1,21 @@
-package com.restaurant.entity;
+package com.restaurant.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public class Dish {
-    private Long id;
+public class FavoriteVO {
+    private Long favoriteId;
+    private Long dishId;
     private String dishName;
     private BigDecimal price;
     private String description;
     private String status;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getFavoriteId() { return favoriteId; }
+    public void setFavoriteId(Long favoriteId) { this.favoriteId = favoriteId; }
+    public Long getDishId() { return dishId; }
+    public void setDishId(Long dishId) { this.dishId = dishId; }
     public String getDishName() { return dishName; }
     public void setDishName(String dishName) { this.dishName = dishName; }
     public BigDecimal getPrice() { return price; }
@@ -24,6 +26,4 @@ public class Dish {
     public void setStatus(String status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

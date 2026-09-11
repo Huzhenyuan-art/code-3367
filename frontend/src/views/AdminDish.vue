@@ -13,14 +13,26 @@
     <el-main class="main-content">
 
       <el-table :data="dishes" stripe style="width: 100%">
-        <el-table-column prop="dishName" label="菜名" width="200" />
-        <el-table-column prop="price" label="价格" width="120">
+        <el-table-column prop="dishName" label="菜名" width="160" />
+        <el-table-column prop="price" label="价格" width="100">
           <template #default="{ row }">¥{{ row.price }}</template>
         </el-table-column>
         <el-table-column prop="description" label="简介" />
-        <el-table-column label="操作" width="200">
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'ON_SHELF' ? 'success' : 'info'">
+              {{ row.status === 'ON_SHELF' ? '在售' : '已下架' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="260">
           <template #default="{ row }">
             <el-button size="small" @click="showEditDialog(row)">修改</el-button>
+            <el-button
+              size="small"
+              :type="row.status === 'ON_SHELF' ? 'warning' : 'success'"
+              @click="handleToggleStatus(row)"
+            >{{ row.status === 'ON_SHELF' ? '下架' : '上架' }}</el-button>
             <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
           </template>
         </el-table-column>
@@ -80,10 +92,21 @@ const rules = {
 
 const loadDishes = async () => {
   try {
-    const res = await dishApi.getList()
+    const res = await dishApi.getAll()
     dishes.value = res.data
   } catch (error) {
     ElMessage.error('加载菜品失败')
+  }
+}
+
+const handleToggleStatus = async (dish) => {
+  const newStatus = dish.status === 'ON_SHELF' ? 'OFF_SHELF' : 'ON_SHELF'
+  try {
+    await dishApi.updateStatus(dish.id, newStatus)
+    ElMessage.success(newStatus === 'ON_SHELF' ? '已上架' : '已下架')
+    loadDishes()
+  } catch (error) {
+    ElMessage.error(error.message || '操作失败')
   }
 }
 
